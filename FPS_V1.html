@@ -1,0 +1,2451 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>人生財務路徑模擬器｜Financial Path Simulator</title>
+
+  <!-- 作者與開發者資訊 -->
+  <meta name="author" content="史地文 (Steven Hung)" />
+  <meta name="creator" content="Steven Hung" />
+  <meta name="publisher" content="Steven Hung" />
+  <meta name="copyright" content="Steven Hung" />
+  <meta name="description" content="複利資產規劃系統，支援單筆與定期定額雙引擎、通膨折現、動態階梯遞增與退休目標逆推。" />
+
+  <style>
+    :root{
+      --bg:#0b1118;
+      --bg2:#0f1722;
+      --panel:#111b27;
+      --panel-2:#142131;
+      --panel-3:#0d1622;
+      --line:#233548;
+      --line-soft:#1a2a3a;
+      --text:#e6edf5;
+      --muted:#8da1b6;
+      --muted-2:#6f8397;
+      --cyan:#58b8d8;
+      --blue:#4f7cff;
+      --emerald:#2ea88f;
+      --amber:#c89b3c;
+      --red:#e05252;
+      --purple:#9d72ff;
+      --principal-line:#7a8fa6;
+      --gold:#f0c059;
+      --shadow:0 16px 40px rgba(0,0,0,.35);
+      --radius-xl:24px;
+      --radius-lg:18px;
+      --radius-md:14px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(79,124,255,.10), transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, rgba(88,184,216,.08), transparent 45%),
+        linear-gradient(180deg, #0a1017 0%, #0b1118 35%, #0d141d 100%);
+      color:var(--text);
+      font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    body{ padding:24px; }
+
+    .page{
+      width:min(1560px, 100%);
+      margin:0 auto;
+      display:grid;
+      gap:18px;
+    }
+
+    .card{
+      position:relative;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)),
+        linear-gradient(180deg, var(--panel) 0%, var(--panel-3) 100%);
+      border:1px solid rgba(141,161,182,.12);
+      border-radius:var(--radius-xl);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 18%);
+      pointer-events:none;
+    }
+
+    .hero{
+      padding:24px;
+      display:grid;
+      gap:18px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:30px;
+      letter-spacing:.2px;
+      font-weight:700;
+      color:var(--text);
+    }
+
+    .title-wrap p{
+      margin:8px 0 0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.65;
+      max-width:980px;
+    }
+
+    .top-controls{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .segmented-control{
+      display:inline-flex;
+      background:#0c141d;
+      border:1px solid rgba(141,161,182,.16);
+      border-radius:999px;
+      padding:3px;
+      gap:2px;
+    }
+
+    .segmented-btn{
+      padding:8px 16px;
+      border-radius:999px;
+      background:transparent;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:500;
+      cursor:pointer;
+      transition:all .2s ease;
+      border:1px solid transparent;
+    }
+
+    .segmented-btn.active{
+      background:linear-gradient(180deg, #1e3247, #172637);
+      color:#cceaf2;
+      box-shadow:0 2px 8px rgba(0,0,0,.3);
+      border:1px solid rgba(88,184,216,.25);
+    }
+
+    .segmented-btn.accent-purple.active{
+      background:linear-gradient(180deg, #2b1d4d, #1c1533);
+      color:#d9c7ff;
+      border:1px solid rgba(157,114,255,.35);
+    }
+
+    .action-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:8px 14px;
+      border-radius:999px;
+      border:1px solid rgba(141,161,182,.2);
+      background:linear-gradient(180deg, #172433, #111a24);
+      color:#c8d5e3;
+      font-size:12px;
+      letter-spacing:.3px;
+      white-space:nowrap;
+      cursor:pointer;
+      transition:all .2s ease;
+    }
+
+    .action-btn:hover{
+      background:#1d2e42;
+      border-color:rgba(88,184,216,.35);
+      color:#fff;
+    }
+
+    .action-btn.active{
+      border-color:var(--emerald);
+      color:#a2e2d4;
+    }
+
+    .badge{
+      padding:8px 14px;
+      border-radius:999px;
+      border:1px solid rgba(88,184,216,.22);
+      background:linear-gradient(180deg, rgba(88,184,216,.12), rgba(88,184,216,.05));
+      color:#bfdbe7;
+      font-size:12px;
+      letter-spacing:.5px;
+      white-space:nowrap;
+    }
+
+    .metrics{
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:14px;
+    }
+
+    .metric{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      border:1px solid rgba(141,161,182,.10);
+      border-radius:18px;
+      padding:16px 18px;
+      min-height:96px;
+      transition:border-color .2s ease;
+    }
+
+    .metric .label{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:10px;
+      letter-spacing:.4px;
+    }
+
+    .metric .value{
+      font-size:28px;
+      line-height:1;
+      font-weight:700;
+      color:var(--text);
+      display:flex;
+      align-items:baseline;
+      gap:6px;
+      white-space:nowrap;
+    }
+
+    .metric .unit{
+      font-size:13px;
+      color:var(--muted);
+      font-weight:500;
+    }
+
+    .metric .hint{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted-2);
+    }
+
+    .metric.accent-cyan .value{ color:#cceaf2; }
+    .metric.accent-blue .value{ color:#d6e0ff; }
+    .metric.accent-emerald .value{ color:#d5f0ea; }
+    .metric.accent-amber .value{ color:#f0e0bb; }
+    .metric.accent-red .value{ color:#f5a3a3; }
+    .metric.accent-red{ border-color:rgba(224,82,82,.25); }
+
+    .chart-head{
+      padding:20px 24px 0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .chart-head h2{
+      margin:0;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .chart-head p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .chart-top-right{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .chart-legend{
+      display:flex;
+      align-items:center;
+      gap:18px;
+      font-size:12px;
+    }
+
+    .legend-item{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:var(--muted);
+    }
+
+    .legend-indicator{
+      width:18px;
+      height:3px;
+      border-radius:2px;
+    }
+
+    .legend-indicator.asset{
+      background:linear-gradient(90deg, #4f7cff, #2ea88f);
+    }
+
+    .legend-indicator.principal{
+      background:transparent;
+      border-top:2px dashed var(--principal-line);
+      height:0;
+    }
+
+    .chart-wrap{
+      position:relative;
+      margin:18px 24px 24px;
+      border-radius:20px;
+      overflow:hidden;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.015), rgba(255,255,255,.005)),
+        linear-gradient(180deg, #0f1824 0%, #0d1520 100%);
+      border:1px solid rgba(141,161,182,.10);
+      height:540px;
+      min-height:400px;
+      touch-action:none;
+      cursor:crosshair;
+    }
+
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    /* ====== 年度明細折疊表 ====== */
+    .table-panel{
+      padding:20px 24px;
+      border-top:1px solid rgba(141,161,182,.1);
+    }
+
+    .table-panel-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .table-panel-header .title-area{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .table-panel-header h2{
+      margin:0;
+      font-size:18px;
+      font-weight:700;
+    }
+
+    .toggle-icon{
+      font-size:12px;
+      color:var(--muted);
+      transition:transform .25s ease;
+    }
+
+    .table-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .table-container{
+      display:none;
+      margin-top:16px;
+      max-height:420px;
+      overflow-y:auto;
+      overflow-x:auto;
+      border:1px solid rgba(141,161,182,.12);
+      border-radius:14px;
+      background:rgba(12, 19, 28, 0.6);
+    }
+
+    .table-container.open{
+      display:block;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      background:#142131;
+      color:var(--muted);
+      font-weight:600;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(141,161,182,.16);
+      z-index:2;
+    }
+
+    thead th:first-child{ text-align:center; }
+    tbody td:first-child{ text-align:center; font-weight:600; color:#bfdbe7; }
+
+    tbody td{
+      padding:10px 14px;
+      border-bottom:1px solid rgba(141,161,182,.06);
+      color:var(--text);
+    }
+
+    tbody tr:hover{
+      background:rgba(88,184,216,.04);
+    }
+
+    .cell-pos{ color:#a2e2d4; }
+    .cell-neg{ color:#f5a3a3; }
+    .sub-col{ color:var(--muted); font-size:12px; }
+
+    .content{
+      display:grid;
+      grid-template-columns:1.25fr .75fr;
+      gap:18px;
+      align-items:start;
+    }
+
+    .controls{
+      padding:22px 24px;
+      display:grid;
+      gap:18px;
+    }
+
+    .summary{
+      padding:22px 24px;
+      display:grid;
+      gap:16px;
+    }
+
+    .section-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .section-title h2{
+      margin:0;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .section-title p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:16px;
+      align-content:start;
+    }
+
+    .field{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.008));
+      border:1px solid rgba(141,161,182,.11);
+      border-radius:18px;
+      padding:16px 16px 14px;
+      transition:all .2s ease;
+    }
+
+    .field.highlight-field{
+      border-color:rgba(157,114,255,.4);
+      background:linear-gradient(180deg, rgba(157,114,255,.06), rgba(255,255,255,.01));
+    }
+
+    .field.full{ grid-column:1 / -1; }
+
+    .field label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:12px;
+    }
+
+    .input-row{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .input-wrap{
+      position:relative;
+      flex:1;
+    }
+
+    input[type="number"]{
+      width:100%;
+      appearance:textfield;
+      border:none;
+      outline:none;
+      color:var(--text);
+      font-size:28px;
+      font-weight:700;
+      background:transparent;
+      padding:0;
+      margin:0;
+    }
+
+    input[type="range"]{
+      width:100%;
+      margin-top:14px;
+      appearance:none;
+      height:6px;
+      border-radius:999px;
+      background:linear-gradient(90deg, rgba(79,124,255,.35), rgba(88,184,216,.35));
+      outline:none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb{
+      appearance:none;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:linear-gradient(180deg, #d8ebf4, #9fcadd);
+      border:2px solid #173245;
+      box-shadow:0 4px 14px rgba(0,0,0,.35);
+      cursor:pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb{
+      width:18px;
+      height:18px;
+      border:none;
+      border-radius:50%;
+      background:linear-gradient(180deg, #d8ebf4, #9fcadd);
+      box-shadow:0 4px 14px rgba(0,0,0,.35);
+      cursor:pointer;
+    }
+
+    .suffix{
+      min-width:92px;
+      text-align:right;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .helper{
+      margin-top:10px;
+      color:var(--muted-2);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .checkbox-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:10px;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .checkbox-row input[type="checkbox"]{
+      width:16px;
+      height:16px;
+      accent-color:var(--cyan);
+      cursor:pointer;
+    }
+
+    .checkbox-row span{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .conditional-field{
+      display:none;
+      margin-top:14px;
+      padding-top:14px;
+      border-top:1px dashed rgba(141,161,182,.15);
+    }
+
+    .conditional-field.open{
+      display:block;
+    }
+
+    .quick-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:4px;
+    }
+
+    button{
+      border:none;
+      outline:none;
+      cursor:pointer;
+      transition:all .18s ease;
+    }
+
+    .chip{
+      padding:10px 14px;
+      border-radius:999px;
+      background:#162332;
+      color:#c8d5e3;
+      border:1px solid rgba(141,161,182,.12);
+      font-size:13px;
+    }
+
+    .chip:hover{
+      background:#1a2a3d;
+      border-color:rgba(88,184,216,.24);
+    }
+
+    .chip.active{
+      background:linear-gradient(180deg, #1d334a, #162638);
+      border-color:rgba(88,184,216,.45);
+      color:#cceaf2;
+      box-shadow:0 0 12px rgba(88,184,216,.18);
+    }
+
+    .summary-panel{
+      background:linear-gradient(180deg, rgba(46,168,143,.07), rgba(79,124,255,.04));
+      border:1px solid rgba(141,161,182,.12);
+      border-radius:20px;
+      padding:18px;
+    }
+
+    .summary-panel .big{
+      font-size:38px;
+      line-height:1;
+      font-weight:800;
+      color:#e2eef5;
+      margin:8px 0 10px;
+    }
+
+    .summary-panel .small{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+    }
+
+    .info-list{
+      display:grid;
+      gap:10px;
+    }
+
+    .info-item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border-bottom:1px solid rgba(141,161,182,.08);
+      padding-bottom:10px;
+    }
+
+    .info-item:last-child{
+      border-bottom:none;
+      padding-bottom:0;
+    }
+
+    .info-item .k{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .info-item .v{
+      color:var(--text);
+      font-size:16px;
+      font-weight:600;
+      text-align:right;
+    }
+
+    .positive{ color:#cdebe4; }
+    .negative{ color:#f5a3a3; }
+    .warning{ color:#ecd9af; }
+
+    @media (max-width:1280px){
+      .metrics{ grid-template-columns:repeat(2,1fr); }
+      .content{ grid-template-columns:1fr; }
+      .chart-wrap{ height:500px; }
+    }
+
+    @media (max-width:860px){
+      body{ padding:14px; }
+      .hero,.controls,.summary{ padding:18px; }
+      .chart-head{ padding:18px 18px 0; }
+      .chart-wrap{ margin:16px 18px 18px; height:440px; min-height:350px; }
+      .grid{ grid-template-columns:1fr; }
+      .table-panel{ padding:16px 18px; }
+    }
+
+    @media (max-width:640px){
+      .metrics{ grid-template-columns:1fr; }
+      .title-wrap h1{ font-size:24px; }
+      .metric .value{ font-size:24px; }
+      .summary-panel .big{ font-size:30px; }
+      .chart-wrap{ height:400px; min-height:320px; }
+      .chart-legend{ font-size:11px; gap:12px; }
+      .top-controls{ width:100%; justify-content:space-between; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="card hero">
+      <div class="topbar">
+        <div class="title-wrap">
+          <h1>人生財務路徑模擬器</h1>
+          <p>
+            Financial Path Simulator ｜ 雙引擎複利成長、通膨實質購買力折現、動態階梯遞增與目標逆推。
+          </p>
+        </div>
+        <div class="top-controls">
+          <div class="segmented-control" role="group" aria-label="檢視模式">
+            <button id="viewNominalBtn" class="segmented-btn active" type="button">名目金額</button>
+            <button id="viewRealBtn" class="segmented-btn" type="button">通膨調整 (實質)</button>
+          </div>
+          <button id="shareBtn" class="action-btn" type="button" title="複製目前參數配置網址">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span id="shareBtnText">複製分享</span>
+          </button>
+          <div class="badge">FPS Edition 1.0</div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric accent-cyan">
+          <div class="label" id="metricFinalLabel">期末累積金額</div>
+          <div class="value"><span id="metricFinal">0</span><span class="unit">萬元</span></div>
+          <div class="hint">第 <span id="metricYears">40</span> 年預估總終值</div>
+        </div>
+        <div class="metric accent-blue">
+          <div class="label">總投入本金</div>
+          <div class="value"><span id="metricContribution">0</span><span class="unit">萬元</span></div>
+          <div class="hint" id="metricContributionHint">單筆 0 萬 + 每月累計</div>
+        </div>
+        <div class="metric accent-emerald" id="metricProfitBox">
+          <div class="label" id="metricProfitLabel">累積獲利</div>
+          <div class="value"><span id="metricProfit">0</span><span class="unit">萬元</span></div>
+          <div class="hint" id="metricProfitHint">終值扣除累計投入</div>
+        </div>
+        <div class="metric accent-amber" id="metricProfitRateBox">
+          <div class="label" id="metricProfitRateLabel">獲利占比</div>
+          <div class="value"><span id="metricProfitRate">0</span><span class="unit">%</span></div>
+          <div class="hint" id="metricProfitRateHint">累積獲利 / 期末總額</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card chart-panel">
+      <div class="chart-head">
+        <div>
+          <h2>資產與本金累積走勢</h2>
+          <p id="chartDesc">橫軸為時間（年），縱軸為累積金額（萬元）。圖中金黃標記為複利爆發點，青色標記為千萬門檻。</p>
+        </div>
+        <div class="chart-top-right">
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-indicator asset"></span>
+              <span id="legendAssetLabel">總累積資產 (名目)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-indicator principal"></span>
+              <span>累計總投入本金</span>
+            </div>
+          </div>
+          <button id="exportPngBtn" class="action-btn" type="button" title="匯出當前圖表高畫質圖片">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            匯出圖表圖片
+          </button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+      </div>
+
+      <!-- 年度歷年明細報表 -->
+      <div class="table-panel">
+        <div class="table-panel-header" id="tableToggleHeader">
+          <div class="title-area">
+            <span class="toggle-icon" id="toggleIcon">▶</span>
+            <h2>年度財務歷程明細</h2>
+            <span style="color:var(--muted-2);font-size:12px;" id="tableSubHint">(點擊展開詳細報表)</span>
+          </div>
+          <div class="table-actions" onclick="event.stopPropagation()">
+            <button id="exportCsvBtn" class="action-btn" type="button" title="匯出 CSV 檔供 Excel 檢視">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              匯出 CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container" id="tableContainer">
+          <table>
+            <thead>
+              <tr>
+                <th>年度</th>
+                <th>當年月扣款 (萬/月)</th>
+                <th>當年定期投入 (萬)</th>
+                <th>累計總本金 (萬)</th>
+                <th class="sub-col">單筆現值 (萬)</th>
+                <th class="sub-col">定期現值 (萬)</th>
+                <th id="thAssetValue">期末總資產 (萬)</th>
+                <th>當年投資收益 (萬)</th>
+                <th>累計總損益 (萬)</th>
+                <th id="thProfitRate">獲利佔比 / 折損率</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="content">
+      <section class="card controls">
+        <div class="section-title">
+          <div>
+            <h2>計算模型設定</h2>
+            <p id="controlModeHint">正向試算模式：依固定或遞增投入推算期末規模。</p>
+          </div>
+          <div class="segmented-control" role="group" aria-label="計算模式">
+            <button id="modeForwardBtn" class="segmented-btn active" type="button">正向累積試算</button>
+            <button id="modeGoalBtn" class="segmented-btn accent-purple" type="button">🎯 目標逆推模式</button>
+          </div>
+        </div>
+
+        <div class="grid">
+          <!-- 目標資產欄位 (僅在 Goal Seeker 模式顯示) -->
+          <div class="field full highlight-field" id="goalField" style="display:none;">
+            <label for="goalInput" style="color:#d9c7ff;font-weight:600;">🎯 目標期末資產規模 (依當前檢視名目/實質計算)</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="goalInput" type="number" min="10" max="20000" step="10" value="3000" style="color:#d9c7ff;" />
+              </div>
+              <div class="suffix" style="color:#d9c7ff;">萬元</div>
+            </div>
+            <input id="goalRange" type="range" min="10" max="20000" step="10" value="3000" />
+            <div class="helper" id="goalHelper">系統將自動逆推每月首年應投金額</div>
+          </div>
+
+          <!-- 初始單筆配置 -->
+          <div class="field">
+            <label for="lumpSumInput">初始單筆投入本金 (既有資產)</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="lumpSumInput" type="number" min="0" max="2000" step="1" value="0" />
+              </div>
+              <div class="suffix">萬元</div>
+            </div>
+            <input id="lumpSumRange" type="range" min="0" max="2000" step="1" value="0" />
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="customLumpRateCheck" />
+              <span>獨立設定單筆投入之年化報酬率</span>
+            </label>
+
+            <div class="conditional-field" id="lumpRateField">
+              <label for="lumpRateInput" style="font-size:12px;margin-bottom:8px;">單筆資產預定年化報酬率</label>
+              <div class="input-row">
+                <div class="input-wrap">
+                  <input id="lumpRateInput" type="number" min="-10" max="50" step="0.1" value="4" />
+                </div>
+                <div class="suffix">% / 年</div>
+              </div>
+              <input id="lumpRateRange" type="range" min="-10" max="50" step="0.1" value="4" />
+              <div class="helper" style="margin-top:6px;">例如：保守型核心資產、債券或高股息 ETF</div>
+            </div>
+          </div>
+
+          <!-- 每月定期定額本金 (目標模式時變成反推計算結果) -->
+          <div class="field" id="monthlyField">
+            <label for="monthlyInput" id="monthlyInputLabel">首年每月定期定額金額</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="monthlyInput" type="number" min="0" max="100" step="0.1" value="1" />
+              </div>
+              <div class="suffix">萬元 / 月</div>
+            </div>
+            <input id="monthlyRange" type="range" min="0" max="100" step="0.1" value="1" />
+            <div class="helper" id="monthlyHelper">第 1 年每月扣款金額基準</div>
+          </div>
+
+          <!-- 每年遞增率 (Step-up DCA) -->
+          <div class="field">
+            <label for="stepUpInput">每年投入金額遞增率 (薪資調升條款)</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="stepUpInput" type="number" min="0" max="20" step="0.5" value="0" />
+              </div>
+              <div class="suffix">% / 年</div>
+            </div>
+            <input id="stepUpRange" type="range" min="0" max="20" step="0.5" value="0" />
+            <div class="helper">
+              次年月扣額 = 上年月扣額 × (1 + 遞增率)
+            </div>
+          </div>
+
+          <!-- 投資年數 -->
+          <div class="field">
+            <label for="yearsInput">投資期間</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="yearsInput" type="number" min="1" max="60" step="1" value="40" />
+              </div>
+              <div class="suffix">年</div>
+            </div>
+            <input id="yearsRange" type="range" min="1" max="60" step="1" value="40" />
+          </div>
+
+          <!-- 定期定額報酬率 -->
+          <div class="field">
+            <label for="rateInput">定期定額預定年化報酬率</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="rateInput" type="number" min="-10" max="50" step="0.1" value="5" />
+              </div>
+              <div class="suffix">% / 年</div>
+            </div>
+            <input id="rateRange" type="range" min="-10" max="50" step="0.1" value="5" />
+            <div class="helper">
+              區間：-10.0% ～ 50.0%
+            </div>
+          </div>
+
+          <!-- 通膨率 -->
+          <div class="field">
+            <label for="inflationInput">預估年通膨率</label>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input id="inflationInput" type="number" min="0" max="10" step="0.1" value="2" />
+              </div>
+              <div class="suffix">% / 年</div>
+            </div>
+            <input id="inflationRange" type="range" min="0" max="10" step="0.1" value="2" />
+            <div class="helper">
+              折現公式：實質購買力 = 名目價值 ÷ (1 + 通膨率)^年數
+            </div>
+          </div>
+
+          <!-- 快捷按鈕 -->
+          <div class="field full">
+            <label>快速套用情境</label>
+            <div class="quick-actions">
+              <button class="chip" data-preset="conservative">保守型｜單筆 50萬(3%) / 月投 0.5萬(3%) / 20年</button>
+              <button class="chip" data-preset="standard">標準型｜單筆 0萬 / 月投 1萬(5%) / 遞增0% / 40年</button>
+              <button class="chip" data-preset="career">職涯成長型｜月投 1萬(7%) / 遞增3% / 30年</button>
+              <button class="chip" data-preset="growth">積極型｜單筆 100萬(5%) / 月投 2萬(8%) / 30年</button>
+              <button class="chip" id="resetBtn">重設預設值</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card summary">
+        <div class="section-title">
+          <div>
+            <h2>財務摘要</h2>
+            <p id="summaryModeDesc">目前顯示名目終值評估</p>
+          </div>
+        </div>
+
+        <div class="summary-panel">
+          <div class="label" id="heroFinalLabel" style="color:var(--muted);font-size:13px;">預估期末資產規模 (名目)</div>
+          <div class="big"><span id="heroFinal">0</span> 萬元</div>
+          <div class="small" id="heroSubDesc">
+            雙引擎資產結構推算，非實際投資績效保證。
+          </div>
+        </div>
+
+        <div class="info-list">
+          <div class="info-item">
+            <div class="k" id="summaryMonthlyLabel">首年月投 / 末年月投</div>
+            <div class="v"><span id="summaryMonthlyRange">0 / 0</span> 萬</div>
+          </div>
+          <div class="info-item">
+            <div class="k">初始單筆資產期末現值</div>
+            <div class="v"><span id="finalLumpValue">0</span> 萬元</div>
+          </div>
+          <div class="info-item">
+            <div class="k">定期定額資產期末現值</div>
+            <div class="v"><span id="finalDcaValue">0</span> 萬元</div>
+          </div>
+          <div class="info-item">
+            <div class="k">第 10 年累積總資產</div>
+            <div class="v"><span id="year10Value">0</span> 萬元</div>
+          </div>
+          <div class="info-item">
+            <div class="k">第 20 年累積總資產</div>
+            <div class="v"><span id="year20Value">0</span> 萬元</div>
+          </div>
+          <div class="info-item">
+            <div class="k">第 30 年累積總資產</div>
+            <div class="v"><span id="year30Value">0</span> 萬元</div>
+          </div>
+          <div class="info-item">
+            <div class="k">長期複利效果評估</div>
+            <div class="v positive" id="compoundTag">—</div>
+          </div>
+          <div class="info-item">
+            <div class="k">通膨侵蝕評估 (終值落差)</div>
+            <div class="v warning" id="inflationGapText">—</div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      // Calculator mode toggle
+      modeForwardBtn: $('modeForwardBtn'),
+      modeGoalBtn: $('modeGoalBtn'),
+      controlModeHint: $('controlModeHint'),
+      goalField: $('goalField'),
+      goalInput: $('goalInput'),
+      goalRange: $('goalRange'),
+      goalHelper: $('goalHelper'),
+      monthlyField: $('monthlyField'),
+      monthlyInputLabel: $('monthlyInputLabel'),
+      monthlyHelper: $('monthlyHelper'),
+
+      // Inputs
+      lumpSumInput: $('lumpSumInput'),
+      lumpSumRange: $('lumpSumRange'),
+      customLumpRateCheck: $('customLumpRateCheck'),
+      lumpRateField: $('lumpRateField'),
+      lumpRateInput: $('lumpRateInput'),
+      lumpRateRange: $('lumpRateRange'),
+
+      monthlyInput: $('monthlyInput'),
+      monthlyRange: $('monthlyRange'),
+      stepUpInput: $('stepUpInput'),
+      stepUpRange: $('stepUpRange'),
+      yearsInput: $('yearsInput'),
+      yearsRange: $('yearsRange'),
+      rateInput: $('rateInput'),
+      rateRange: $('rateRange'),
+      inflationInput: $('inflationInput'),
+      inflationRange: $('inflationRange'),
+
+      // View toggle & top actions
+      viewNominalBtn: $('viewNominalBtn'),
+      viewRealBtn: $('viewRealBtn'),
+      shareBtn: $('shareBtn'),
+      shareBtnText: $('shareBtnText'),
+      chartDesc: $('chartDesc'),
+      legendAssetLabel: $('legendAssetLabel'),
+      summaryModeDesc: $('summaryModeDesc'),
+      heroFinalLabel: $('heroFinalLabel'),
+      metricFinalLabel: $('metricFinalLabel'),
+      metricContributionHint: $('metricContributionHint'),
+      exportPngBtn: $('exportPngBtn'),
+
+      // Metrics
+      metricFinal: $('metricFinal'),
+      metricContribution: $('metricContribution'),
+      metricProfit: $('metricProfit'),
+      metricProfitLabel: $('metricProfitLabel'),
+      metricProfitHint: $('metricProfitHint'),
+      metricProfitBox: $('metricProfitBox'),
+      metricProfitRate: $('metricProfitRate'),
+      metricProfitRateLabel: $('metricProfitRateLabel'),
+      metricProfitRateHint: $('metricProfitRateHint'),
+      metricProfitRateBox: $('metricProfitRateBox'),
+      metricYears: $('metricYears'),
+
+      // Summary list
+      heroFinal: $('heroFinal'),
+      summaryMonthlyLabel: $('summaryMonthlyLabel'),
+      summaryMonthlyRange: $('summaryMonthlyRange'),
+      finalLumpValue: $('finalLumpValue'),
+      finalDcaValue: $('finalDcaValue'),
+      year10Value: $('year10Value'),
+      year20Value: $('year20Value'),
+      year30Value: $('year30Value'),
+      compoundTag: $('compoundTag'),
+      inflationGapText: $('inflationGapText'),
+
+      // Table panel elements
+      tableToggleHeader: $('tableToggleHeader'),
+      toggleIcon: $('toggleIcon'),
+      tableContainer: $('tableContainer'),
+      tableBody: $('tableBody'),
+      thAssetValue: $('thAssetValue'),
+      exportCsvBtn: $('exportCsvBtn'),
+
+      // Buttons & Canvas
+      resetBtn: $('resetBtn'),
+      canvas: $('chart'),
+      chips: Array.from(document.querySelectorAll('.chip'))
+    };
+
+    const ctx = els.canvas.getContext('2d');
+    const animatedState = new Map();
+
+    const DEFAULTS = {
+      calcMode: 'forward',
+      goal: 3000,
+      lumpSum: 0,
+      customLumpRate: false,
+      lumpRate: 4,
+      monthly: 1,
+      stepUp: 0,
+      years: 40,
+      rate: 5,
+      inflation: 2,
+      mode: 'nominal'
+    };
+
+    const PRESETS = {
+      conservative: { lumpSum: 50, customLumpRate: true, lumpRate: 3, monthly: 0.5, stepUp: 0, rate: 3, years: 20, inflation: 2 },
+      standard: { lumpSum: 0, customLumpRate: false, lumpRate: 5, monthly: 1, stepUp: 0, rate: 5, years: 40, inflation: 2 },
+      career: { lumpSum: 0, customLumpRate: false, lumpRate: 7, monthly: 1, stepUp: 3, rate: 7, years: 30, inflation: 2 },
+      growth: { lumpSum: 100, customLumpRate: true, lumpRate: 5, monthly: 2, stepUp: 0, rate: 8, years: 30, inflation: 2 }
+    };
+
+    const FIELD_CONFIG = {
+      goal: { input: els.goalInput, range: els.goalRange, min: 10, max: 20000, step: 10, round: 0 },
+      lumpSum: { input: els.lumpSumInput, range: els.lumpSumRange, min: 0, max: 2000, step: 1, round: 1 },
+      lumpRate: { input: els.lumpRateInput, range: els.lumpRateRange, min: -10, max: 50, step: 0.1, round: 1 },
+      monthly: { input: els.monthlyInput, range: els.monthlyRange, min: 0, max: 100, step: 0.1, round: 2 },
+      stepUp: { input: els.stepUpInput, range: els.stepUpRange, min: 0, max: 20, step: 0.5, round: 1 },
+      years: { input: els.yearsInput, range: els.yearsRange, min: 1, max: 60, step: 1, round: 0 },
+      rate: { input: els.rateInput, range: els.rateRange, min: -10, max: 50, step: 0.1, round: 1 },
+      inflation: { input: els.inflationInput, range: els.inflationRange, min: 0, max: 10, step: 0.1, round: 1 }
+    };
+
+    // Global State
+    let currentCalcMode = 'forward';
+    let currentSeries = [];
+    let currentViewMode = 'nominal';
+    let isTableOpen = false;
+    let drawProgress = 1;
+    let chartAnimId = null;
+    let numberAnimFrameIds = new Map();
+    let resizeRaf = null;
+    let hoverIndex = -1;
+
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+    function roundTo(v, digits = 1){ const factor = Math.pow(10, digits); return Math.round(v * factor) / factor; }
+
+    function format1(v){
+      return Number(v).toLocaleString('zh-Hant', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      });
+    }
+
+    function format2(v){
+      return Number(v).toLocaleString('zh-Hant', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function getNumber(el, fallback = 0){
+      const n = parseFloat(el.value);
+      return Number.isNaN(n) ? fallback : n;
+    }
+
+    function syncField(name, source = 'input'){
+      const field = FIELD_CONFIG[name];
+      if(source === 'input') field.range.value = field.input.value;
+      if(source === 'range') field.input.value = field.range.value;
+    }
+
+    function sanitizeField(name){
+      const field = FIELD_CONFIG[name];
+      let value = getNumber(field.input, field.min);
+      value = clamp(value, field.min, field.max);
+      value = roundTo(value, field.round);
+      field.input.value = value;
+      field.range.value = value;
+      return value;
+    }
+
+    /* ====== URL Hash 狀態管理 ====== */
+    function updateUrlHash(paramsObj){
+      const p = new URLSearchParams();
+      p.set('calc', currentCalcMode);
+      if(currentCalcMode === 'goal'){
+        p.set('goal', paramsObj.goal);
+      }
+      p.set('lump', paramsObj.lumpSum);
+      if(paramsObj.customLumpRate){
+        p.set('lumpR', paramsObj.lumpRate);
+      }
+      p.set('m', paramsObj.monthly);
+      p.set('step', paramsObj.stepUp);
+      p.set('y', paramsObj.years);
+      p.set('r', paramsObj.rate);
+      p.set('i', paramsObj.inflation);
+      p.set('mode', currentViewMode);
+      history.replaceState(null, '', '#' + p.toString());
+    }
+
+    function parseUrlHash(){
+      if(!window.location.hash || window.location.hash.length <= 1) return null;
+      try{
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        return {
+          calcMode: params.get('calc') === 'goal' ? 'goal' : 'forward',
+          goal: params.has('goal') ? parseFloat(params.get('goal')) : null,
+          lumpSum: params.has('lump') ? parseFloat(params.get('lump')) : null,
+          customLumpRate: params.has('lumpR'),
+          lumpRate: params.has('lumpR') ? parseFloat(params.get('lumpR')) : null,
+          monthly: params.has('m') ? parseFloat(params.get('m')) : null,
+          stepUp: params.has('step') ? parseFloat(params.get('step')) : null,
+          years: params.has('y') ? parseInt(params.get('y'), 10) : null,
+          rate: params.has('r') ? parseFloat(params.get('r')) : null,
+          inflation: params.has('i') ? parseFloat(params.get('i')) : null,
+          mode: params.get('mode') === 'real' ? 'real' : 'nominal'
+        };
+      }catch(e){
+        return null;
+      }
+    }
+
+    /* ====== Preset Active 狀態聯動 ====== */
+    function syncPresetChips(currentSettings){
+      if(currentCalcMode === 'goal'){
+        els.chips.forEach(c => c.classList.remove('active'));
+        return;
+      }
+
+      let matchedKey = null;
+      for(const [key, p] of Object.entries(PRESETS)){
+        const isMatch =
+          p.lumpSum === currentSettings.lumpSum &&
+          p.customLumpRate === currentSettings.customLumpRate &&
+          (!p.customLumpRate || p.lumpRate === currentSettings.lumpRate) &&
+          p.monthly === currentSettings.monthly &&
+          p.stepUp === currentSettings.stepUp &&
+          p.years === currentSettings.years &&
+          p.rate === currentSettings.rate &&
+          p.inflation === currentSettings.inflation;
+
+        if(isMatch){
+          matchedKey = key;
+          break;
+        }
+      }
+
+      els.chips.forEach(chip => {
+        if(chip.dataset.preset && chip.dataset.preset === matchedKey){
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+    }
+
+    /* ====== 核心財務雙引擎計算 (含 Step-up DCA) ====== */
+    function calculateFinancialSeries(lumpSum, lumpRate, initialMonthlyWan, stepUpRate, dcaRate, inflationRate, years){
+      const dcaMonthlyRate = dcaRate / 100 / 12;
+      const lumpAnnualRate = lumpRate / 100;
+      const stepUpDec = stepUpRate / 100;
+      const infDec = inflationRate / 100;
+      const series = [];
+
+      let dcaBalance = 0;
+      let totalDcaPrincipal = 0;
+      let prevNominalAsset = lumpSum;
+      let prevRealAsset = lumpSum;
+
+      for(let year = 1; year <= years; year++){
+        const currentYearMonthlyWan = initialMonthlyWan * Math.pow(1 + stepUpDec, year - 1);
+        const annualDcaContr = currentYearMonthlyWan * 12;
+
+        for(let m = 0; m < 12; m++){
+          dcaBalance = (dcaBalance + currentYearMonthlyWan) * (1 + dcaMonthlyRate);
+        }
+
+        const lumpBalance = lumpSum * Math.pow(1 + lumpAnnualRate, year);
+
+        totalDcaPrincipal += annualDcaContr;
+        const totalPrincipal = lumpSum + totalDcaPrincipal;
+
+        const nominalTotalAsset = lumpBalance + dcaBalance;
+        const discountFactor = Math.pow(1 + infDec, year);
+        const realTotalAsset = nominalTotalAsset / discountFactor;
+
+        const nominalGainThisYear = nominalTotalAsset - prevNominalAsset - annualDcaContr;
+        const realGainThisYear = realTotalAsset - prevRealAsset - annualDcaContr;
+
+        series.push({
+          year,
+          monthlyWan: currentYearMonthlyWan,
+          annualDcaContribution: annualDcaContr,
+          totalPrincipal,
+          lumpPrincipal: lumpSum,
+          dcaPrincipal: totalDcaPrincipal,
+          nominalLumpAsset: lumpBalance,
+          nominalDcaAsset: dcaBalance,
+          nominalTotalAsset,
+          realTotalAsset,
+          realLumpAsset: lumpBalance / discountFactor,
+          realDcaAsset: dcaBalance / discountFactor,
+          nominalProfit: nominalTotalAsset - totalPrincipal,
+          realProfit: realTotalAsset - totalPrincipal,
+          nominalGainThisYear,
+          realGainThisYear
+        });
+
+        prevNominalAsset = nominalTotalAsset;
+        prevRealAsset = realTotalAsset;
+      }
+
+      return series;
+    }
+
+    /* ====== 目標逆推求解演算法 (Goal Seeker) ====== */
+    function solveRequiredMonthly(targetAsset, isRealMode, lumpSum, lumpRate, stepUpRate, dcaRate, inflationRate, years){
+      const infDec = inflationRate / 100;
+      const nominalTarget = isRealMode ? targetAsset * Math.pow(1 + infDec, years) : targetAsset;
+
+      const lumpNominalFinal = lumpSum * Math.pow(1 + lumpRate / 100, years);
+      const remainingNominalGoal = nominalTarget - lumpNominalFinal;
+
+      if(remainingNominalGoal <= 0){
+        return { requiredMonthly: 0, lumpSatisfied: true };
+      }
+
+      let low = 0;
+      let high = Math.max(100, remainingNominalGoal / (12 * years) * 2);
+      let bestM = 0;
+
+      for(let iter = 0; iter < 45; iter++){
+        const mid = (low + high) / 2;
+        const testSeries = calculateFinancialSeries(0, lumpRate, mid, stepUpRate, dcaRate, inflationRate, years);
+        const testFinal = testSeries[testSeries.length - 1].nominalDcaAsset;
+
+        if(Math.abs(testFinal - remainingNominalGoal) < 0.001){
+          bestM = mid;
+          break;
+        }
+        if(testFinal < remainingNominalGoal){
+          low = mid;
+        } else {
+          high = mid;
+        }
+        bestM = mid;
+      }
+
+      return { requiredMonthly: bestM, lumpSatisfied: false };
+    }
+
+    function valueAtYear(series, year, key){
+      if(year <= 0) return 0;
+      if(year > series.length) return series.length ? series[series.length - 1][key] : 0;
+      return series[year - 1][key];
+    }
+
+    /* ====== 數值平滑/即時過渡 ====== */
+    function setNumericValue(el, target, animated = false, digits = 1){
+      if(numberAnimFrameIds.has(el)){
+        cancelAnimationFrame(numberAnimFrameIds.get(el));
+        numberAnimFrameIds.delete(el);
+      }
+
+      if(!animated){
+        animatedState.set(el, target);
+        el.textContent = digits === 2 ? format2(target) : format1(target);
+        return;
+      }
+
+      const start = animatedState.has(el) ? animatedState.get(el) : 0;
+      const duration = 500;
+      const t0 = performance.now();
+
+      function frame(now){
+        const p = Math.min(1, (now - t0) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const value = start + (target - start) * eased;
+        animatedState.set(el, value);
+        el.textContent = digits === 2 ? format2(value) : format1(value);
+        if(p < 1){
+          numberAnimFrameIds.set(el, requestAnimationFrame(frame));
+        } else {
+          animatedState.set(el, target);
+          numberAnimFrameIds.delete(el);
+        }
+      }
+
+      numberAnimFrameIds.set(el, requestAnimationFrame(frame));
+    }
+
+    /* ====== Canvas 坐標幾何 ====== */
+    function niceMax(max){
+      const rough = max * 1.08;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, rough))));
+      for(const s of [1, 2, 5, 10]){
+        const candidate = s * magnitude;
+        if(candidate >= rough) return candidate;
+      }
+      return 10 * magnitude;
+    }
+
+    function niceMin(min){
+      if(min >= 0) return 0;
+      const rough = min * 1.08;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(1, Math.abs(rough)))));
+      for(const s of [1, 2, 5, 10]){
+        const candidate = -s * magnitude;
+        if(candidate <= rough) return candidate;
+      }
+      return -10 * magnitude;
+    }
+
+    function formatAxis(v){
+      if(Math.abs(v) >= 1000) return Math.round(v).toLocaleString('zh-Hant');
+      return format1(v);
+    }
+
+    function roundRect(ctx, x, y, w, h, r){
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function getChartGeometry(series, targetCanvas = els.canvas){
+      const rect = targetCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const pad = { top:34, right:28, bottom:50, left:78 };
+      const cw = w - pad.left - pad.right;
+      const ch = h - pad.top - pad.bottom;
+
+      if(!series.length || cw <= 0 || ch <= 0){
+        return { w, h, pad, cw, ch, minVal:0, maxVal:10 };
+      }
+
+      const activeKey = currentViewMode === 'nominal' ? 'nominalTotalAsset' : 'realTotalAsset';
+      const allValues = [];
+      series.forEach(d => {
+        allValues.push(d[activeKey]);
+        allValues.push(d.totalPrincipal);
+      });
+
+      const maxValRaw = Math.max(...allValues, 10);
+      const minValRaw = Math.min(...allValues, 0);
+
+      return {
+        w, h, pad, cw, ch,
+        minVal: niceMin(minValRaw),
+        maxVal: niceMax(maxValRaw)
+      };
+    }
+
+    function xOfIndex(index, series, pad, cw){
+      if(series.length <= 1) return pad.left;
+      return pad.left + (index / (series.length - 1)) * cw;
+    }
+
+    function yOfValue(value, minVal, maxVal, pad, ch){
+      const span = maxVal - minVal || 1;
+      return pad.top + ch - ((value - minVal) / span) * ch;
+    }
+
+    function drawGridOnContext(targetCtx, pad, cw, ch, minVal, maxVal, years){
+      targetCtx.save();
+      targetCtx.strokeStyle = 'rgba(141,161,182,.10)';
+      targetCtx.lineWidth = 1;
+      targetCtx.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+
+      const yTicks = 5;
+      for(let i = 0; i <= yTicks; i++){
+        const ratio = i / yTicks;
+        const y = pad.top + ch - ch * ratio;
+        const value = minVal + (maxVal - minVal) * ratio;
+
+        targetCtx.beginPath();
+        targetCtx.moveTo(pad.left, y);
+        targetCtx.lineTo(pad.left + cw, y);
+        targetCtx.stroke();
+
+        targetCtx.fillStyle = '#7f93a7';
+        targetCtx.textAlign = 'right';
+        targetCtx.textBaseline = 'middle';
+        targetCtx.fillText(formatAxis(value), pad.left - 12, y);
+      }
+
+      const xTicks = years <= 10 ? years : (years <= 20 ? 10 : 8);
+      for(let i = 0; i <= xTicks; i++){
+        const ratio = i / xTicks;
+        const x = pad.left + cw * ratio;
+
+        targetCtx.beginPath();
+        targetCtx.moveTo(x, pad.top);
+        targetCtx.lineTo(x, pad.top + ch);
+        targetCtx.stroke();
+
+        targetCtx.fillStyle = '#7f93a7';
+        targetCtx.textAlign = 'center';
+        targetCtx.textBaseline = 'top';
+        targetCtx.fillText(String(Math.round(years * ratio)), x, pad.top + ch + 12);
+      }
+
+      targetCtx.fillStyle = '#8da1b6';
+      targetCtx.textAlign = 'left';
+      targetCtx.fillText(currentViewMode === 'nominal' ? '名目金額（萬元）' : '實質購買力（萬元）', pad.left, 18);
+      targetCtx.textAlign = 'right';
+      targetCtx.fillText('時間（年）', pad.left + cw, pad.top + ch + 34);
+
+      targetCtx.restore();
+    }
+
+    function drawDualLinesOnContext(targetCtx, series, pad, cw, ch, minVal, maxVal, progress = 1){
+      const visibleCount = Math.max(1, Math.floor(series.length * progress));
+      const partial = series.slice(0, visibleCount);
+      if(!partial.length) return;
+
+      const activeKey = currentViewMode === 'nominal' ? 'nominalTotalAsset' : 'realTotalAsset';
+      const baselineY = yOfValue(0, minVal, maxVal, pad, ch);
+
+      targetCtx.save();
+
+      // 1. 總資產漸層填充
+      const gradientArea = targetCtx.createLinearGradient(0, pad.top, 0, pad.top + ch);
+      gradientArea.addColorStop(0, 'rgba(79,124,255,.24)');
+      gradientArea.addColorStop(.55, 'rgba(88,184,216,.12)');
+      gradientArea.addColorStop(1, 'rgba(46,168,143,.02)');
+
+      targetCtx.beginPath();
+      targetCtx.moveTo(xOfIndex(0, series, pad, cw), baselineY);
+      partial.forEach((p, i) => {
+        targetCtx.lineTo(xOfIndex(i, series, pad, cw), yOfValue(p[activeKey], minVal, maxVal, pad, ch));
+      });
+      targetCtx.lineTo(xOfIndex(partial.length - 1, series, pad, cw), baselineY);
+      targetCtx.closePath();
+      targetCtx.fillStyle = gradientArea;
+      targetCtx.fill();
+
+      // 2. 總投入本金線（細虛線 Dashed）
+      targetCtx.beginPath();
+      targetCtx.setLineDash([4, 4]);
+      partial.forEach((p, i) => {
+        const x = xOfIndex(i, series, pad, cw);
+        const y = yOfValue(p.totalPrincipal, minVal, maxVal, pad, ch);
+        if(i === 0) targetCtx.moveTo(x, y);
+        else targetCtx.lineTo(x, y);
+      });
+      targetCtx.strokeStyle = '#7a8fa6';
+      targetCtx.lineWidth = 1.6;
+      targetCtx.stroke();
+      targetCtx.setLineDash([]);
+
+      // 3. 總資產實線
+      targetCtx.beginPath();
+      partial.forEach((p, i) => {
+        const x = xOfIndex(i, series, pad, cw);
+        const y = yOfValue(p[activeKey], minVal, maxVal, pad, ch);
+        if(i === 0) targetCtx.moveTo(x, y);
+        else targetCtx.lineTo(x, y);
+      });
+
+      const gradientLine = targetCtx.createLinearGradient(pad.left, 0, pad.left + cw, 0);
+      gradientLine.addColorStop(0, '#4f7cff');
+      gradientLine.addColorStop(.5, '#58b8d8');
+      gradientLine.addColorStop(1, '#2ea88f');
+
+      targetCtx.strokeStyle = gradientLine;
+      targetCtx.lineWidth = 3;
+      targetCtx.lineCap = 'round';
+      targetCtx.lineJoin = 'round';
+      targetCtx.shadowColor = 'rgba(88,184,216,.2)';
+      targetCtx.shadowBlur = 10;
+      targetCtx.stroke();
+      targetCtx.shadowBlur = 0;
+
+      // 端點
+      const last = partial[partial.length - 1];
+      const lx = xOfIndex(partial.length - 1, series, pad, cw);
+      const lyAsset = yOfValue(last[activeKey], minVal, maxVal, pad, ch);
+      const lyPrincipal = yOfValue(last.totalPrincipal, minVal, maxVal, pad, ch);
+
+      targetCtx.beginPath();
+      targetCtx.arc(lx, lyPrincipal, 3.5, 0, Math.PI * 2);
+      targetCtx.fillStyle = '#7a8fa6';
+      targetCtx.fill();
+
+      targetCtx.beginPath();
+      targetCtx.arc(lx, lyAsset, 4.5, 0, Math.PI * 2);
+      targetCtx.fillStyle = '#d8ebf4';
+      targetCtx.fill();
+      targetCtx.lineWidth = 2;
+      targetCtx.strokeStyle = '#173245';
+      targetCtx.stroke();
+
+      targetCtx.restore();
+    }
+
+    /* ====== 黃金交叉與里程碑標註 (Milestones) ====== */
+    function drawMilestonesOnContext(targetCtx, series, pad, cw, ch, minVal, maxVal){
+      if(!series || series.length < 2) return;
+      const isReal = currentViewMode === 'real';
+      const activeKey = isReal ? 'realTotalAsset' : 'nominalTotalAsset';
+      const activeProfitKey = isReal ? 'realProfit' : 'nominalProfit';
+
+      targetCtx.save();
+      targetCtx.font = '11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+
+      let tippingIndex = -1;
+      for(let i = 0; i < series.length; i++){
+        if(series[i][activeProfitKey] >= series[i].totalPrincipal && series[i].totalPrincipal > 0){
+          tippingIndex = i;
+          break;
+        }
+      }
+
+      if(tippingIndex !== -1){
+        const p = series[tippingIndex];
+        const px = xOfIndex(tippingIndex, series, pad, cw);
+        const py = yOfValue(p[activeKey], minVal, maxVal, pad, ch);
+
+        targetCtx.beginPath();
+        targetCtx.arc(px, py, 6.5, 0, Math.PI * 2);
+        targetCtx.fillStyle = 'rgba(240, 192, 89, 0.25)';
+        targetCtx.fill();
+
+        targetCtx.beginPath();
+        targetCtx.arc(px, py, 4, 0, Math.PI * 2);
+        targetCtx.fillStyle = '#f0c059';
+        targetCtx.fill();
+        targetCtx.lineWidth = 1.5;
+        targetCtx.strokeStyle = '#141e2a';
+        targetCtx.stroke();
+
+        const badgeText = `★ 複利加速點 (第 ${p.year} 年)`;
+        const tw = targetCtx.measureText(badgeText).width + 16;
+        const th = 22;
+        let bx = px - tw / 2;
+        let by = py - th - 12;
+
+        if(bx < pad.left) bx = pad.left;
+        if(bx + tw > pad.left + cw) bx = pad.left + cw - tw;
+        if(by < pad.top) by = py + 12;
+
+        roundRect(targetCtx, bx, by, tw, th, 6);
+        targetCtx.fillStyle = 'rgba(28, 24, 12, 0.88)';
+        targetCtx.fill();
+        targetCtx.strokeStyle = 'rgba(240, 192, 89, 0.45)';
+        targetCtx.lineWidth = 1;
+        targetCtx.stroke();
+
+        targetCtx.fillStyle = '#fce5a3';
+        targetCtx.textAlign = 'center';
+        targetCtx.textBaseline = 'middle';
+        targetCtx.fillText(badgeText, bx + tw / 2, by + th / 2);
+      }
+
+      const thresholds = [1000, 2000, 5000, 10000];
+      thresholds.forEach(thresh => {
+        let reachedIndex = -1;
+        for(let i = 0; i < series.length; i++){
+          if(series[i][activeKey] >= thresh){
+            reachedIndex = i;
+            break;
+          }
+        }
+
+        if(reachedIndex !== -1 && reachedIndex !== tippingIndex){
+          const p = series[reachedIndex];
+          const px = xOfIndex(reachedIndex, series, pad, cw);
+          const py = yOfValue(p[activeKey], minVal, maxVal, pad, ch);
+
+          targetCtx.beginPath();
+          targetCtx.arc(px, py, 4, 0, Math.PI * 2);
+          targetCtx.fillStyle = '#58b8d8';
+          targetCtx.fill();
+          targetCtx.lineWidth = 1.5;
+          targetCtx.strokeStyle = '#141e2a';
+          targetCtx.stroke();
+
+          const badgeText = `${thresh}萬達成 (${p.year}年)`;
+          const tw = targetCtx.measureText(badgeText).width + 12;
+          const th = 20;
+          let bx = px - tw / 2;
+          let by = py - th - 10;
+
+          if(bx < pad.left) bx = pad.left;
+          if(bx + tw > pad.left + cw) bx = pad.left + cw - tw;
+          if(by < pad.top) by = py + 10;
+
+          roundRect(targetCtx, bx, by, tw, th, 5);
+          targetCtx.fillStyle = 'rgba(10, 22, 33, 0.88)';
+          targetCtx.fill();
+          targetCtx.strokeStyle = 'rgba(88, 184, 216, 0.35)';
+          targetCtx.stroke();
+
+          targetCtx.fillStyle = '#cceaf2';
+          targetCtx.textAlign = 'center';
+          targetCtx.textBaseline = 'middle';
+          targetCtx.fillText(badgeText, bx + tw / 2, by + th / 2);
+        }
+      });
+
+      targetCtx.restore();
+    }
+
+    /* ====== 懸停 Tooltip (已修復 Crosshair 垂直線與浮動視窗) ====== */
+    function drawCrosshairAndTooltip(series, pad, cw, ch, minVal, maxVal){
+      if(hoverIndex < 0 || hoverIndex >= series.length) return;
+
+      const point = series[hoverIndex];
+      const isReal = currentViewMode === 'real';
+      const activeTotalAsset = isReal ? point.realTotalAsset : point.nominalTotalAsset;
+      const activeLumpAsset = isReal ? point.realLumpAsset : point.nominalLumpAsset;
+      const activeDcaAsset = isReal ? point.realDcaAsset : point.nominalDcaAsset;
+      const profit = isReal ? point.realProfit : point.nominalProfit;
+
+      const x = xOfIndex(hoverIndex, series, pad, cw);
+      const yAsset = yOfValue(activeTotalAsset, minVal, maxVal, pad, ch);
+      const yPrincipal = yOfValue(point.totalPrincipal, minVal, maxVal, pad, ch);
+
+      ctx.save();
+
+      // 垂直導引線 (Crosshair)
+      ctx.beginPath();
+      ctx.setLineDash([3, 3]);
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, pad.top + ch);
+      ctx.strokeStyle = 'rgba(141, 161, 182, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 本金焦點圓點
+      ctx.beginPath();
+      ctx.arc(x, yPrincipal, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#7a8fa6';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#0b1118';
+      ctx.stroke();
+
+      // 資產焦點光暈與圓點
+      ctx.beginPath();
+      ctx.arc(x, yAsset, 7, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(88,184,216,.25)';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(x, yAsset, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#173245';
+      ctx.stroke();
+
+      // Tooltip 浮動視窗
+      const label = isReal ? '實質購買力' : '名目價值';
+      const isLoss = profit < 0;
+      const profitRate = point.totalPrincipal > 0 ? (profit / point.totalPrincipal) * 100 : 0;
+      const sign = profit > 0 ? '+' : '';
+
+      const lines = [
+        { text: `第 ${point.year} 年 (${label}) ｜ 當年月扣 ${format2(point.monthlyWan)} 萬/月`, color: '#bfdbe7', bold: true },
+        { text: `總資產規模：${format1(activeTotalAsset)} 萬元`, color: '#e6edf5', bold: true },
+        { text: `  ↳ 單筆現值：${format1(activeLumpAsset)} 萬 ｜ 定期現值：${format1(activeDcaAsset)} 萬`, color: '#8da1b6', bold: false },
+        { text: `總累計本金：${format1(point.totalPrincipal)} 萬元 (定期累計 ${format1(point.dcaPrincipal)} 萬)`, color: '#8da1b6', bold: false },
+        { text: `累計總損益：${sign}${format1(profit)} 萬 (${sign}${format1(profitRate)}%)`, color: isLoss ? '#f5a3a3' : '#a2e2d4', bold: true }
+      ];
+
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      let maxTextW = 0;
+      lines.forEach(l => {
+        const tw = ctx.measureText(l.text).width;
+        if(tw > maxTextW) maxTextW = tw;
+      });
+
+      const cardW = maxTextW + 28;
+      const cardH = 114;
+      let tx = x + 14;
+      let ty = yAsset - cardH / 2;
+
+      if(tx + cardW > pad.left + cw) tx = x - cardW - 14;
+      if(ty < pad.top) ty = pad.top;
+      if(ty + cardH > pad.top + ch) ty = pad.top + ch - cardH;
+
+      roundRect(ctx, tx, ty, cardW, cardH, 10);
+      ctx.fillStyle = 'rgba(10, 16, 23, 0.95)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(141, 161, 182, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      let lineY = ty + 18;
+      lines.forEach(l => {
+        ctx.fillStyle = l.color;
+        ctx.font = l.bold
+          ? '600 12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+          : '400 12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(l.text, tx + 14, lineY);
+        lineY += 19;
+      });
+
+      ctx.restore();
+    }
+
+    function drawChart(series, progress = 1){
+      currentSeries = series || [];
+      drawProgress = progress;
+
+      const { w, h, pad, cw, ch, minVal, maxVal } = getChartGeometry(currentSeries);
+      ctx.clearRect(0, 0, w, h);
+
+      if(cw <= 0 || ch <= 0 || !currentSeries.length) return;
+
+      drawGridOnContext(ctx, pad, cw, ch, minVal, maxVal, currentSeries.length);
+      drawDualLinesOnContext(ctx, currentSeries, pad, cw, ch, minVal, maxVal, progress);
+
+      // 里程碑與十字準心
+      if(progress >= 0.99){
+        drawMilestonesOnContext(ctx, currentSeries, pad, cw, ch, minVal, maxVal);
+        drawCrosshairAndTooltip(currentSeries, pad, cw, ch, minVal, maxVal);
+      }
+    }
+
+    function animateChart(series){
+      if(chartAnimId) cancelAnimationFrame(chartAnimId);
+      const duration = 550;
+      const start = performance.now();
+
+      function frame(now){
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        drawChart(series, eased);
+        if(p < 1){
+          chartAnimId = requestAnimationFrame(frame);
+        } else {
+          chartAnimId = null;
+          drawChart(series, 1);
+        }
+      }
+
+      chartAnimId = requestAnimationFrame(frame);
+    }
+
+    function resizeCanvas(){
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      const rect = els.canvas.getBoundingClientRect();
+      els.canvas.width = Math.round(rect.width * dpr);
+      els.canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawChart(currentSeries, drawProgress);
+    }
+
+    /* ====== 匯出圖表圖片 (修復版 Export PNG) ====== */
+    function exportChartPng(){
+      if(!currentSeries.length) return;
+
+      const exportCanvas = document.createElement('canvas');
+      const dpr = 2; // 高畫質 2x
+      const rect = els.canvas.getBoundingClientRect();
+      exportCanvas.width = Math.round(rect.width * dpr);
+      exportCanvas.height = Math.round(rect.height * dpr);
+      const expCtx = exportCanvas.getContext('2d');
+      expCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // 1. 繪入深色漸層背景
+      const bgGrad = expCtx.createLinearGradient(0, 0, 0, rect.height);
+      bgGrad.addColorStop(0, '#0f1824');
+      bgGrad.addColorStop(1, '#0b1118');
+      expCtx.fillStyle = bgGrad;
+      expCtx.fillRect(0, 0, rect.width, rect.height);
+
+      // 2. 獨立繪製格線、雙線與里程碑
+      const { pad, cw, ch, minVal, maxVal } = getChartGeometry(currentSeries, els.canvas);
+      drawGridOnContext(expCtx, pad, cw, ch, minVal, maxVal, currentSeries.length);
+      drawDualLinesOnContext(expCtx, currentSeries, pad, cw, ch, minVal, maxVal, 1);
+      drawMilestonesOnContext(expCtx, currentSeries, pad, cw, ch, minVal, maxVal);
+
+      // 3. 浮水印標註
+      expCtx.save();
+      expCtx.fillStyle = '#6f8397';
+      expCtx.font = '11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      expCtx.textAlign = 'right';
+      expCtx.fillText('Generated by 人生財務路徑模擬器 ｜ Steven Hung', rect.width - 24, rect.height - 16);
+      expCtx.restore();
+
+      // 4. 觸發圖片下載
+      const years = els.yearsInput.value;
+      const isReal = currentViewMode === 'real' ? '實質購買力' : '名目';
+      
+      const link = document.createElement('a');
+      link.download = `人生財務路徑模擬_${years}年期_${isReal}.png`;
+      link.href = exportCanvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    /* ====== 明細報表渲染與 CSV 匯出 ====== */
+    function renderDataTable(series){
+      if(!isTableOpen) return;
+
+      const isReal = currentViewMode === 'real';
+      els.thAssetValue.textContent = isReal ? '期末總實質購買力 (萬)' : '期末總名目資產 (萬)';
+
+      let html = '';
+      series.forEach(item => {
+        const totalAsset = isReal ? item.realTotalAsset : item.nominalTotalAsset;
+        const lumpAsset = isReal ? item.realLumpAsset : item.nominalLumpAsset;
+        const dcaAsset = isReal ? item.realDcaAsset : item.nominalDcaAsset;
+        const profit = isReal ? item.realProfit : item.nominalProfit;
+        const gainThisYear = isReal ? item.realGainThisYear : item.nominalGainThisYear;
+        const isLoss = profit < 0;
+
+        let rateText = '';
+        if(isLoss){
+          const lossRate = item.totalPrincipal > 0 ? (profit / item.totalPrincipal) * 100 : 0;
+          rateText = `${format1(lossRate)}% (折損)`;
+        } else {
+          const profitRate = totalAsset > 0 ? (profit / totalAsset) * 100 : 0;
+          rateText = `${format1(profitRate)}% (AUM)`;
+        }
+
+        const profitSign = profit > 0 ? '+' : '';
+        const gainSign = gainThisYear > 0 ? '+' : '';
+
+        html += `
+          <tr>
+            <td>第 ${item.year} 年</td>
+            <td>${format2(item.monthlyWan)}</td>
+            <td>${format1(item.annualDcaContribution)}</td>
+            <td>${format1(item.totalPrincipal)}</td>
+            <td class="sub-col">${format1(lumpAsset)}</td>
+            <td class="sub-col">${format1(dcaAsset)}</td>
+            <td style="font-weight:600;">${format1(totalAsset)}</td>
+            <td class="${gainThisYear >= 0 ? 'cell-pos' : 'cell-neg'}">${gainSign}${format1(gainThisYear)}</td>
+            <td class="${isLoss ? 'cell-neg' : 'cell-pos'}">${profitSign}${format1(profit)}</td>
+            <td class="${isLoss ? 'cell-neg' : 'cell-pos'}">${rateText}</td>
+          </tr>
+        `;
+      });
+
+      els.tableBody.innerHTML = html;
+    }
+
+    function toggleDataTable(){
+      isTableOpen = !isTableOpen;
+      if(isTableOpen){
+        els.tableContainer.classList.add('open');
+        els.toggleIcon.textContent = '▼';
+        renderDataTable(currentSeries);
+      } else {
+        els.tableContainer.classList.remove('open');
+        els.toggleIcon.textContent = '▶';
+      }
+    }
+
+    function exportToCsv(){
+      if(!currentSeries.length) return;
+      const isReal = currentViewMode === 'real';
+      const modeLabel = isReal ? '實質購買力' : '名目價值';
+
+      let csv = '\uFEFF';
+      csv += `人生財務路徑模擬歷程明細 (${modeLabel})\r\n`;
+      csv += '年度,當年月扣款(萬元/月),當年定期投入(萬元),累計總投入本金(萬元),單筆現值(萬元),定期現值(萬元),期末總資產(萬元),當年投資收益(萬元),累計總損益(萬元),獲利佔比或折損率(%)\r\n';
+
+      currentSeries.forEach(d => {
+        const totalAsset = isReal ? d.realTotalAsset : d.nominalTotalAsset;
+        const lumpAsset = isReal ? d.realLumpAsset : d.nominalLumpAsset;
+        const dcaAsset = isReal ? d.realDcaAsset : d.nominalDcaAsset;
+        const profit = isReal ? d.realProfit : d.nominalProfit;
+        const gain = isReal ? d.realGainThisYear : d.nominalGainThisYear;
+        const rate = (profit < 0)
+          ? (d.totalPrincipal > 0 ? (profit / d.totalPrincipal) * 100 : 0)
+          : (totalAsset > 0 ? (profit / totalAsset) * 100 : 0);
+
+        csv += `${d.year},${roundTo(d.monthlyWan, 2)},${roundTo(d.annualDcaContribution, 1)},${roundTo(d.totalPrincipal, 1)},${roundTo(lumpAsset, 1)},${roundTo(dcaAsset, 1)},${roundTo(totalAsset, 1)},${roundTo(gain, 1)},${roundTo(profit, 1)},${roundTo(rate, 1)}%\r\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const monthly = els.monthlyInput.value;
+      const lump = els.lumpSumInput.value;
+      const years = els.yearsInput.value;
+      link.setAttribute('href', url);
+      link.setAttribute('download', `人生財務路徑_單筆${lump}萬_首年月投${monthly}萬_${years}年_${modeLabel}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function copyShareLink(){
+      const fullUrl = window.location.href;
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        const orig = els.shareBtnText.textContent;
+        els.shareBtnText.textContent = '已複製連結！';
+        els.shareBtn.classList.add('active');
+        setTimeout(() => {
+          els.shareBtnText.textContent = orig;
+          els.shareBtn.classList.remove('active');
+        }, 1800);
+      }).catch(() => {
+        prompt('請手動複製連結：', fullUrl);
+      });
+    }
+
+    /* ====== 渲染財務摘要指標 ====== */
+    function updateSummary(series, initialMonthly, years, lumpSum, animated = false){
+      if(!series.length) return;
+      const finalItem = series[series.length - 1];
+
+      const isReal = currentViewMode === 'real';
+      const targetAsset = isReal ? finalItem.realTotalAsset : finalItem.nominalTotalAsset;
+      const targetLumpAsset = isReal ? finalItem.realLumpAsset : finalItem.nominalLumpAsset;
+      const targetDcaAsset = isReal ? finalItem.realDcaAsset : finalItem.nominalDcaAsset;
+      const totalContribution = finalItem.totalPrincipal;
+      const profit = isReal ? finalItem.realProfit : finalItem.nominalProfit;
+
+      setNumericValue(els.metricFinal, targetAsset, animated);
+      setNumericValue(els.heroFinal, targetAsset, animated);
+      setNumericValue(els.finalLumpValue, targetLumpAsset, animated);
+      setNumericValue(els.finalDcaValue, targetDcaAsset, animated);
+      els.metricYears.textContent = years;
+
+      setNumericValue(els.metricContribution, totalContribution, animated);
+      els.metricContributionHint.textContent = `單筆 ${format1(lumpSum)} 萬 + 定期累計 ${format1(finalItem.dcaPrincipal)} 萬`;
+
+      const lastMonthly = finalItem.monthlyWan;
+      els.summaryMonthlyRange.textContent = `${format2(initialMonthly)} 萬 / ${format2(lastMonthly)} 萬`;
+
+      const isLoss = profit < 0;
+
+      if(isLoss){
+        els.metricProfitBox.classList.remove('accent-emerald');
+        els.metricProfitBox.classList.add('accent-red');
+        els.metricProfitLabel.textContent = '投資虧損';
+        els.metricProfitHint.textContent = '終值低於累計投入本金';
+
+        els.metricProfitRateBox.classList.remove('accent-amber');
+        els.metricProfitRateBox.classList.add('accent-red');
+        els.metricProfitRateLabel.textContent = '本金折損率';
+        els.metricProfitRateHint.textContent = '|虧損| / 累計投入本金';
+
+        const lossRate = totalContribution > 0 ? (profit / totalContribution) * 100 : 0;
+        setNumericValue(els.metricProfit, profit, animated);
+        setNumericValue(els.metricProfitRate, lossRate, animated);
+      } else {
+        els.metricProfitBox.classList.remove('accent-red');
+        els.metricProfitBox.classList.add('accent-emerald');
+        els.metricProfitLabel.textContent = '累積獲利';
+        els.metricProfitHint.textContent = '終值扣除累計投入';
+
+        els.metricProfitRateBox.classList.remove('accent-red');
+        els.metricProfitRateBox.classList.add('accent-amber');
+        els.metricProfitRateLabel.textContent = '獲利占比';
+        els.metricProfitRateHint.textContent = '累積獲利 / 期末總資產';
+
+        const profitRate = targetAsset > 0 ? (profit / targetAsset) * 100 : 0;
+        setNumericValue(els.metricProfit, profit, animated);
+        setNumericValue(els.metricProfitRate, profitRate, animated);
+      }
+
+      const activeKey = isReal ? 'realTotalAsset' : 'nominalTotalAsset';
+      setNumericValue(els.year10Value, valueAtYear(series, 10, activeKey), animated);
+      setNumericValue(els.year20Value, valueAtYear(series, 20, activeKey), animated);
+      setNumericValue(els.year30Value, valueAtYear(series, 30, activeKey), animated);
+
+      const assetRatio = totalContribution > 0 ? targetAsset / totalContribution : 0;
+      let tag = '初期累積階段';
+      if(isLoss){
+        tag = '資產縮水侵蝕本金';
+      } else {
+        if(assetRatio >= 1.2) tag = '複利效果開始顯現';
+        if(assetRatio >= 1.8) tag = '複利效果穩定放大';
+        if(assetRatio >= 2.5) tag = '複利驅動顯著增長';
+      }
+      els.compoundTag.textContent = tag;
+      els.compoundTag.className = isLoss ? 'v negative' : 'v positive';
+
+      const gap = finalItem.nominalTotalAsset - finalItem.realTotalAsset;
+      els.inflationGapText.textContent = `減損約 ${format1(gap)} 萬元`;
+    }
+
+    /* ====== 核心計算派送 ====== */
+    function update(animated = false){
+      const goal = sanitizeField('goal');
+      const lumpSum = sanitizeField('lumpSum');
+      const stepUp = sanitizeField('stepUp');
+      const years = sanitizeField('years');
+      const dcaRate = sanitizeField('rate');
+      const inflation = sanitizeField('inflation');
+
+      const customLumpRate = els.customLumpRateCheck.checked;
+      let lumpRate = dcaRate;
+      if(customLumpRate){
+        lumpRate = sanitizeField('lumpRate');
+      }
+
+      let initialMonthly = sanitizeField('monthly');
+
+      if(currentCalcMode === 'goal'){
+        const isReal = currentViewMode === 'real';
+        const solution = solveRequiredMonthly(goal, isReal, lumpSum, lumpRate, stepUp, dcaRate, inflation, years);
+
+        if(solution.lumpSatisfied){
+          initialMonthly = 0;
+          els.goalHelper.textContent = `🎉 單筆既有資產經複利滾動後已達成目標！首年月投為 0 萬元。`;
+        } else {
+          initialMonthly = solution.requiredMonthly;
+          els.goalHelper.textContent = `欲於第 ${years} 年達成 ${format1(goal)} 萬目標，首年月投需為 ${format2(initialMonthly)} 萬元。`;
+        }
+
+        els.monthlyInput.value = roundTo(initialMonthly, 2);
+        els.monthlyRange.value = clamp(roundTo(initialMonthly, 2), 0, 100);
+      }
+
+      const settings = {
+        calcMode: currentCalcMode,
+        goal,
+        lumpSum,
+        customLumpRate,
+        lumpRate,
+        monthly: initialMonthly,
+        stepUp,
+        years,
+        rate: dcaRate,
+        inflation
+      };
+
+      updateUrlHash(settings);
+      syncPresetChips(settings);
+
+      const series = calculateFinancialSeries(lumpSum, lumpRate, initialMonthly, stepUp, dcaRate, inflation, years);
+
+      if(hoverIndex >= series.length) hoverIndex = series.length - 1;
+
+      updateSummary(series, initialMonthly, years, lumpSum, animated);
+      renderDataTable(series);
+
+      if(animated){
+        animateChart(series);
+      } else {
+        if(chartAnimId){
+          cancelAnimationFrame(chartAnimId);
+          chartAnimId = null;
+        }
+        drawChart(series, 1);
+      }
+    }
+
+    function setCalcMode(mode){
+      if(currentCalcMode === mode) return;
+      currentCalcMode = mode;
+
+      if(mode === 'forward'){
+        els.modeForwardBtn.classList.add('active');
+        els.modeGoalBtn.classList.remove('active');
+        els.goalField.style.display = 'none';
+        els.monthlyField.classList.remove('highlight-field');
+        els.monthlyInput.readOnly = false;
+        els.monthlyRange.disabled = false;
+        els.monthlyInputLabel.textContent = '首年每月定期定額金額';
+        els.monthlyHelper.textContent = '第 1 年每月扣款金額基準';
+        els.controlModeHint.textContent = '正向試算模式：依固定或遞增投入推算期末規模。';
+      } else {
+        els.modeForwardBtn.classList.remove('active');
+        els.modeGoalBtn.classList.add('active');
+        els.goalField.style.display = 'block';
+        els.monthlyField.classList.add('highlight-field');
+        els.monthlyInput.readOnly = true;
+        els.monthlyRange.disabled = true;
+        els.monthlyInputLabel.textContent = '🎯 逆推算出：每月應投入金額';
+        els.monthlyHelper.textContent = '系統根據右方目標資產規模自動計算得出';
+        els.controlModeHint.textContent = '目標逆推模式：輸入預期總資產，逆推每月應扣款本金。';
+      }
+
+      update(true);
+    }
+
+    function setViewMode(mode){
+      if(currentViewMode === mode) return;
+      currentViewMode = mode;
+
+      if(mode === 'nominal'){
+        els.viewNominalBtn.classList.add('active');
+        els.viewRealBtn.classList.remove('active');
+        els.metricFinalLabel.textContent = '期末累積金額 (名目)';
+        els.heroFinalLabel.textContent = '預估期末資產規模 (名目)';
+        els.legendAssetLabel.textContent = '總累積資產 (名目)';
+        els.chartDesc.textContent = '橫軸為時間（年），縱軸為累積金額（萬元）。圖中金黃標記為複利爆發點，青色標記為千萬門檻。';
+        els.summaryModeDesc.textContent = '目前顯示名目終值評估';
+      } else {
+        els.viewNominalBtn.classList.remove('active');
+        els.viewRealBtn.classList.add('active');
+        els.metricFinalLabel.textContent = '期末購買力 (實質)';
+        els.heroFinalLabel.textContent = '預估期末實質購買力 (實質)';
+        els.legendAssetLabel.textContent = '總累積資產 (實質購買力)';
+        els.chartDesc.textContent = '橫軸為時間（年），縱軸為累積金額（萬元）。目前檢視：通膨折現後之實質購買力。';
+        els.summaryModeDesc.textContent = '目前顯示通膨折現後實質購買力';
+      }
+
+      update(true);
+    }
+
+    function applyPreset(name){
+      const preset = PRESETS[name];
+      if(!preset) return;
+
+      if(currentCalcMode === 'goal'){
+        setCalcMode('forward');
+      }
+
+      els.lumpSumInput.value = preset.lumpSum;
+      els.customLumpRateCheck.checked = preset.customLumpRate;
+      if(preset.customLumpRate){
+        els.lumpRateField.classList.add('open');
+        els.lumpRateInput.value = preset.lumpRate;
+      } else {
+        els.lumpRateField.classList.remove('open');
+      }
+
+      els.monthlyInput.value = preset.monthly;
+      els.stepUpInput.value = preset.stepUp;
+      els.rateInput.value = preset.rate;
+      els.yearsInput.value = preset.years;
+      els.inflationInput.value = preset.inflation;
+
+      syncField('lumpSum', 'input');
+      syncField('lumpRate', 'input');
+      syncField('monthly', 'input');
+      syncField('stepUp', 'input');
+      syncField('rate', 'input');
+      syncField('years', 'input');
+      syncField('inflation', 'input');
+
+      hoverIndex = -1;
+      update(true);
+    }
+
+    function resetAll(){
+      setCalcMode('forward');
+
+      els.goalInput.value = DEFAULTS.goal;
+      els.lumpSumInput.value = DEFAULTS.lumpSum;
+      els.customLumpRateCheck.checked = DEFAULTS.customLumpRate;
+      els.lumpRateField.classList.remove('open');
+      els.lumpRateInput.value = DEFAULTS.lumpRate;
+
+      els.monthlyInput.value = DEFAULTS.monthly;
+      els.stepUpInput.value = DEFAULTS.stepUp;
+      els.yearsInput.value = DEFAULTS.years;
+      els.rateInput.value = DEFAULTS.rate;
+      els.inflationInput.value = DEFAULTS.inflation;
+
+      syncField('goal', 'input');
+      syncField('lumpSum', 'input');
+      syncField('lumpRate', 'input');
+      syncField('monthly', 'input');
+      syncField('stepUp', 'input');
+      syncField('rate', 'input');
+      syncField('years', 'input');
+      syncField('inflation', 'input');
+
+      hoverIndex = -1;
+      setViewMode('nominal');
+      update(true);
+    }
+
+    function bindField(name){
+      const field = FIELD_CONFIG[name];
+
+      field.input.addEventListener('input', () => {
+        syncField(name, 'input');
+        hoverIndex = -1;
+        update(false);
+      });
+
+      field.range.addEventListener('input', () => {
+        syncField(name, 'range');
+        hoverIndex = -1;
+        update(false);
+      });
+    }
+
+    function getCanvasCoords(clientX, clientY){
+      const rect = els.canvas.getBoundingClientRect();
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function handlePointerPosition(x, y){
+      if(!currentSeries.length) return;
+
+      const { pad, cw, ch } = getChartGeometry(currentSeries);
+      const inside =
+        x >= pad.left - 10 &&
+        x <= pad.left + cw + 10 &&
+        y >= pad.top &&
+        y <= pad.top + ch;
+
+      if(!inside){
+        if(hoverIndex !== -1){
+          hoverIndex = -1;
+          drawChart(currentSeries, 1);
+        }
+        return;
+      }
+
+      let nearest = 0;
+      let minDist = Infinity;
+
+      for(let i = 0; i < currentSeries.length; i++){
+        const px = xOfIndex(i, currentSeries, pad, cw);
+        const dist = Math.abs(x - px);
+        if(dist < minDist){
+          minDist = dist;
+          nearest = i;
+        }
+      }
+
+      if(hoverIndex !== nearest){
+        hoverIndex = nearest;
+        drawChart(currentSeries, 1);
+      }
+    }
+
+    function handleCanvasLeave(){
+      if(hoverIndex !== -1){
+        hoverIndex = -1;
+        drawChart(currentSeries, 1);
+      }
+    }
+
+    function bindEvents(){
+      bindField('goal');
+      bindField('lumpSum');
+      bindField('lumpRate');
+      bindField('monthly');
+      bindField('stepUp');
+      bindField('years');
+      bindField('rate');
+      bindField('inflation');
+
+      els.modeForwardBtn.addEventListener('click', () => setCalcMode('forward'));
+      els.modeGoalBtn.addEventListener('click', () => setCalcMode('goal'));
+
+      els.customLumpRateCheck.addEventListener('change', (e) => {
+        if(e.target.checked){
+          els.lumpRateField.classList.add('open');
+        } else {
+          els.lumpRateField.classList.remove('open');
+        }
+        update(false);
+      });
+
+      els.viewNominalBtn.addEventListener('click', () => setViewMode('nominal'));
+      els.viewRealBtn.addEventListener('click', () => setViewMode('real'));
+      els.shareBtn.addEventListener('click', copyShareLink);
+      els.exportPngBtn.addEventListener('click', exportChartPng);
+
+      els.tableToggleHeader.addEventListener('click', toggleDataTable);
+      els.exportCsvBtn.addEventListener('click', exportToCsv);
+
+      els.chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          if(chip.id === 'resetBtn'){
+            resetAll();
+            return;
+          }
+          if(chip.dataset.preset){
+            applyPreset(chip.dataset.preset);
+          }
+        });
+      });
+
+      els.canvas.addEventListener('mousemove', (e) => {
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+        handlePointerPosition(x, y);
+      });
+      els.canvas.addEventListener('mouseleave', handleCanvasLeave);
+
+      els.canvas.addEventListener('touchstart', (e) => {
+        if(e.touches.length === 1){
+          const touch = e.touches[0];
+          const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
+          handlePointerPosition(x, y);
+        }
+      }, { passive: true });
+
+      els.canvas.addEventListener('touchmove', (e) => {
+        if(e.touches.length === 1){
+          const touch = e.touches[0];
+          const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
+          handlePointerPosition(x, y);
+        }
+      }, { passive: true });
+
+      els.canvas.addEventListener('touchend', () => {
+        setTimeout(handleCanvasLeave, 1200);
+      });
+
+      window.addEventListener('resize', () => {
+        if(resizeRaf) cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(resizeCanvas);
+      });
+    }
+
+    /* ====== 初始化 ====== */
+    function init(){
+      bindEvents();
+
+      const state = parseUrlHash();
+      if(state){
+        if(state.calcMode) setCalcMode(state.calcMode);
+        if(state.goal !== null) els.goalInput.value = state.goal;
+        if(state.lumpSum !== null) els.lumpSumInput.value = state.lumpSum;
+        if(state.customLumpRate){
+          els.customLumpRateCheck.checked = true;
+          els.lumpRateField.classList.add('open');
+          if(state.lumpRate !== null) els.lumpRateInput.value = state.lumpRate;
+        }
+        if(state.monthly !== null) els.monthlyInput.value = state.monthly;
+        if(state.stepUp !== null) els.stepUpInput.value = state.stepUp;
+        if(state.years !== null) els.yearsInput.value = state.years;
+        if(state.rate !== null) els.rateInput.value = state.rate;
+        if(state.inflation !== null) els.inflationInput.value = state.inflation;
+
+        syncField('goal', 'input');
+        syncField('lumpSum', 'input');
+        syncField('lumpRate', 'input');
+        syncField('monthly', 'input');
+        syncField('stepUp', 'input');
+        syncField('years', 'input');
+        syncField('rate', 'input');
+        syncField('inflation', 'input');
+
+        if(state.mode === 'real') setViewMode('real');
+      }
+
+      resizeCanvas();
+      update(true);
+    }
+
+    init();
+  </script>
+</body>
+</html>
