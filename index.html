@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>財務工具入口網｜Financial Toolkit</title>
+
+  <!-- 作者與開發者資訊 -->
+  <meta name="author" content="史地文 (Steven Hung)" />
+  <meta name="creator" content="Steven Hung" />
+  <meta name="publisher" content="Steven Hung" />
+  <meta name="copyright" content="Steven Hung" />
+  <meta name="description" content="個人財務規劃與資產模擬工具集。" />
+
+  <style>
+    :root{
+      --bg:#0b1118;
+      --bg2:#0f1722;
+      --panel:#111b27;
+      --panel-2:#142131;
+      --panel-3:#0d1622;
+      --line:#233548;
+      --line-soft:#1a2a3a;
+      --text:#e6edf5;
+      --muted:#8da1b6;
+      --muted-2:#6f8397;
+      --cyan:#58b8d8;
+      --blue:#4f7cff;
+      --emerald:#2ea88f;
+      --amber:#c89b3c;
+      --purple:#9d72ff;
+      --shadow:0 16px 40px rgba(0,0,0,.35);
+      --radius-xl:24px;
+      --radius-lg:18px;
+      --radius-md:14px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(79,124,255,.12), transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, rgba(88,184,216,.09), transparent 45%),
+        linear-gradient(180deg, #0a1017 0%, #0b1118 35%, #0d141d 100%);
+      color:var(--text);
+      font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    body{
+      padding:32px 24px;
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+    }
+
+    .container{
+      width:min(1120px, 100%);
+      margin:0 auto;
+      display:grid;
+      gap:24px;
+      flex:1;
+    }
+
+    .card{
+      position:relative;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)),
+        linear-gradient(180deg, var(--panel) 0%, var(--panel-3) 100%);
+      border:1px solid rgba(141,161,182,.12);
+      border-radius:var(--radius-xl);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 22%);
+      pointer-events:none;
+    }
+
+    .hero{
+      padding:36px 32px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .badge{
+      padding:8px 14px;
+      border-radius:999px;
+      border:1px solid rgba(88,184,216,.25);
+      background:linear-gradient(180deg, rgba(88,184,216,.14), rgba(88,184,216,.05));
+      color:#bfdbe7;
+      font-size:12px;
+      letter-spacing:.5px;
+      white-space:nowrap;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:32px;
+      letter-spacing:.2px;
+      font-weight:700;
+      color:var(--text);
+    }
+
+    .title-wrap p{
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.7;
+      max-width:860px;
+    }
+
+    .section-label{
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.8px;
+      color:var(--muted-2);
+      text-transform:uppercase;
+      margin-top:8px;
+      margin-bottom:12px;
+      padding-left:4px;
+    }
+
+    .tools-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));
+      gap:20px;
+    }
+
+    .tool-link{
+      text-decoration:none;
+      color:inherit;
+      display:block;
+    }
+
+    .tool-card{
+      height:100%;
+      padding:28px 24px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:20px;
+      transition:all .25s ease;
+      cursor:pointer;
+    }
+
+    .tool-card:hover{
+      transform:translateY(-3px);
+      border-color:rgba(88,184,216,.35);
+      box-shadow:0 20px 48px rgba(0,0,0,.45);
+    }
+
+    .tool-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .tool-icon-wrap{
+      width:48px;
+      height:48px;
+      border-radius:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg, rgba(79,124,255,.2), rgba(88,184,216,.15));
+      border:1px solid rgba(88,184,216,.25);
+      color:#d8ebf4;
+    }
+
+    .tool-tag{
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:600;
+      letter-spacing:.3px;
+      border:1px solid rgba(157,114,255,.3);
+      background:rgba(157,114,255,.08);
+      color:#d9c7ff;
+    }
+
+    .tool-body h2{
+      margin:0 0 8px;
+      font-size:20px;
+      font-weight:700;
+      color:#e6edf5;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .tool-body p{
+      margin:0;
+      font-size:13.5px;
+      color:var(--muted);
+      line-height:1.65;
+    }
+
+    .tool-features{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:16px;
+    }
+
+    .feature-pill{
+      font-size:11.5px;
+      color:var(--muted);
+      background:#162332;
+      border:1px solid rgba(141,161,182,.12);
+      padding:4px 10px;
+      border-radius:999px;
+    }
+
+    .tool-footer{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      border-top:1px solid rgba(141,161,182,.08);
+      padding-top:16px;
+      margin-top:4px;
+      font-size:13px;
+      color:var(--cyan);
+      font-weight:600;
+    }
+
+    .tool-footer svg{
+      transition:transform .2s ease;
+    }
+
+    .tool-card:hover .tool-footer svg{
+      transform:translateX(4px);
+    }
+
+    footer{
+      margin-top:48px;
+      text-align:center;
+      font-size:13px;
+      color:var(--muted-2);
+      padding-bottom:12px;
+    }
+
+    @media (max-width:640px){
+      body{ padding:18px 14px; }
+      .hero{ padding:24px 20px; }
+      .title-wrap h1{ font-size:26px; }
+      .tools-grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="card hero">
+      <div class="topbar">
+        <div class="title-wrap">
+          <h1>財務工具入口網</h1>
+          <p>
+            專為長期投資人與理財規劃設計的實用工具集。提供直觀、互動流暢與全方位資產累積模擬環境。
+          </p>
+        </div>
+        <div class="badge">Hub Edition</div>
+      </div>
+    </header>
+
+    <main>
+      <div class="section-label">Available Applications</div>
+      <div class="tools-grid">
+        <a href="FPS_V1.html" class="tool-link">
+          <article class="card tool-card">
+            <div>
+              <div class="tool-header">
+                <div class="tool-icon-wrap">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                    <polyline points="16 7 22 7 22 13"></polyline>
+                  </svg>
+                </div>
+                <span class="tool-tag">FPS v1.0</span>
+              </div>
+
+              <div class="tool-body" style="margin-top:16px;">
+                <h2>人生財務路徑模擬器</h2>
+                <p>
+                  Financial Path Simulator ｜ 雙引擎複利推估、實質購買力折現、每年動態遞增扣款與目標逆推模型。
+                </p>
+                <div class="tool-features">
+                  <span class="feature-pill">單筆＋定期定額</span>
+                  <span class="feature-pill">通膨購買力折現</span>
+                  <span class="feature-pill">Step-up 遞增</span>
+                  <span class="feature-pill">目標逆推</span>
+                  <span class="feature-pill">雙軌互動圖表</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="tool-footer">
+              <span>開啟模擬器</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </article>
+        </a>
+      </div>
+    </main>
+
+    <footer>
+      © 2026 Steven Hung (史地文). All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
